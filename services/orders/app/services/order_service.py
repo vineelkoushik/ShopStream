@@ -1,0 +1,41 @@
+from decimal import Decimal 
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
+from app.models import Order, OrderItem
+from app.schemas import OrderCreate
+from app.clients.product_client import get_product, ProductNotFoundError, ProductServiceUnavailableError
+
+def create_order(db: Session, user_id: int, order_in: OrderCreate, token: str) -> Order:
+    total = Decimal("0.00")  
+    order_items = []
+
+    for item in order_in.items:
+        try:
+            product_data = get_product(item.product_id, token)
+        except ProductNotFoundError:
+            raise HTTPException(status_code=404, detail=f"Product {item.product_id} not found")
+        except ProductServiceUnavailableError:
+            raise HTTPException(status_code=503, detail="Product service is currently unavailable")
+
+        unit_price = Decimal(str(product_data["price"])) # <--- Convert string to Decimal
+        total += unit_price * item.quantity
+
+        order_items.append(
+            OrderItem(
+                product_id=item.product_id,
+                quantity=item.quantity,
+                unit_price=unit_price
+            )
+        )
+
+    new_order = Order(
+        user_id=user_id,
+        status="PENDING",
+        total=total,
+        items=order_items
+    )
+    
+    db.add(new_order)
+    db.commit()
+    db.refresh(new_order)
+    return new_order
