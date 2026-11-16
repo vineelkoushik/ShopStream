@@ -16,3 +16,38 @@ def place_order(
     user_id = int(current_user["sub"])
     token = current_user["raw_token"] 
     return order_service.create_order(db, user_id, order_in, token)
+
+@router.get("/", response_model=list[OrderOut])
+def get_my_orders(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = int(current_user["sub"])
+    is_admin = current_user.get("role") == "admin"
+    
+    result = order_service.list_orders(db, user_id, is_admin, skip, limit)
+    return result["items"]
+
+@router.get("/{order_id}", response_model=OrderOut)
+def get_order_by_id(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = int(current_user["sub"])
+    is_admin = current_user.get("role") == "admin"
+    
+    return order_service.get_order(db, user_id, order_id, is_admin)
+
+@router.post("/{order_id}/cancel", response_model=OrderOut)
+def cancel_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    user_id = int(current_user["sub"])
+    is_admin = current_user.get("role") == "admin"
+    
+    return order_service.cancel_order(db, user_id, order_id, is_admin)
