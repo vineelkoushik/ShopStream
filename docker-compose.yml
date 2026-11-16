@@ -39,5 +39,18 @@ services:
       postgres:
         condition: service_healthy
 
+  order:
+    build: ./services/orders
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://app:shopstream_secret_123@postgres:5432/order_db
+      - JWT_SECRET=super_secret_key_change_me_later
+      - JWT_ALGORITHM=HS256
+      - PRODUCT_SERVICE_URL=http://products:8000
+    ports:
+      - "8003:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
