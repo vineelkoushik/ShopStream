@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "super_secret_key_change_me_later"
     JWT_ALGORITHM: str = "HS256"
     PRODUCT_SERVICE_URL: str = "http://localhost:8002"
+    PAYMENT_SERVICE_URL: str = "http://localhost:8004"
 
     class Config:
         env_file = ".env"
