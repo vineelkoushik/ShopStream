@@ -1,0 +1,16 @@
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
+
+  auth:
+    ports:
+      - "8001:8000"
+
+  order:
+    ports:
+      - "8003:8000"
