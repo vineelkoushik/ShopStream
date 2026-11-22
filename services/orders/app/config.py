@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     PRODUCT_SERVICE_URL: str = "http://localhost:8002"
     PAYMENT_SERVICE_URL: str = "http://localhost:8004"
+    KAFKA_BOOTSTRAP: str = "localhost:29092"
 
     class Config:
         env_file = ".env"

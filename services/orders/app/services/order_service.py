@@ -5,6 +5,8 @@ from app.models import Order, OrderItem
 from app.schemas import OrderCreate
 from app.clients.product_client import get_product, ProductNotFoundError, ProductServiceUnavailableError
 from app.clients.payment_client import process_payment, PaymentFailedError, PaymentServiceUnavailableError
+from app.events.envelope import build_event
+from app.events.producer import publish
 
 def create_order(db: Session, user_id: int, order_in: OrderCreate, token: str) -> Order:
     total = Decimal("0.00")  
@@ -39,6 +41,14 @@ def create_order(db: Session, user_id: int, order_in: OrderCreate, token: str) -
     db.add(new_order)
     db.commit()
     db.refresh(new_order)
+
+    event_data = {
+        "items": [{"product_id": i.product_id, "quantity": i.quantity, "unit_price": float(i.unit_price)} for i in new_order.items],
+        "total": float(new_order.total),
+        "user_id": user_id
+    }
+    event = build_event("order.created", new_order.id, event_data)
+    publish("order.created", new_order.id, event)
 
     try:
         process_payment(new_order.id, float(total), token)
