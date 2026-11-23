@@ -4,7 +4,6 @@ from fastapi import HTTPException
 from app.models import Order, OrderItem
 from app.schemas import OrderCreate
 from app.clients.product_client import get_product, ProductNotFoundError, ProductServiceUnavailableError
-from app.clients.payment_client import process_payment, PaymentFailedError, PaymentServiceUnavailableError
 from app.events.envelope import build_event
 from app.events.producer import publish
 
@@ -50,18 +49,6 @@ def create_order(db: Session, user_id: int, order_in: OrderCreate, token: str) -
     event = build_event("order.created", new_order.id, event_data)
     publish("order.created", new_order.id, event)
 
-    try:
-        process_payment(new_order.id, float(total), token)
-        new_order.status = "CONFIRMED"
-    except PaymentFailedError:
-        new_order.status = "CANCELLED"
-        new_order.cancel_reason = "Payment failed"
-    except PaymentServiceUnavailableError:
-        new_order.status = "PENDING"
-        new_order.cancel_reason = "Payment service was down, needs retry"
-        
-    db.commit()
-    db.refresh(new_order)
     return new_order
 
 def get_order(db: Session, user_id: int, order_id: int, is_admin: bool) -> Order:

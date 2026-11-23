@@ -1,3 +1,4 @@
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -62,6 +63,21 @@ services:
       postgres:
         condition: service_healthy
 
+  product:
+    build: ./services/products
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://app:shopstream_secret_123@postgres:5432/product_db
+      - JWT_SECRET=super_secret_key_change_me_later
+      - JWT_ALGORITHM=HS256
+      - KAFKA_BOOTSTRAP=kafka:9092
+    ports:
+      - "8002:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
   order:
     build: ./services/orders
     environment:
@@ -84,6 +100,34 @@ services:
     command: python -m app.worker
     environment:
       - DATABASE_URL=postgresql+psycopg2://app:shopstream_secret_123@postgres:5432/product_db
+      - JWT_SECRET=super_secret_key_change_me_later
+      - JWT_ALGORITHM=HS256
+      - KAFKA_BOOTSTRAP=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  payment_worker:
+    build: ./services/payments
+    command: python -m app.worker
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://app:shopstream_secret_123@postgres:5432/payment_db
+      - JWT_SECRET=super_secret_key_change_me_later
+      - JWT_ALGORITHM=HS256
+      - KAFKA_BOOTSTRAP=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  order_worker:
+    build: ./services/orders
+    command: python -m app.worker
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://app:shopstream_secret_123@postgres:5432/order_db
       - JWT_SECRET=super_secret_key_change_me_later
       - JWT_ALGORITHM=HS256
       - KAFKA_BOOTSTRAP=kafka:9092

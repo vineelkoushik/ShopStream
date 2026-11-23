@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     PAYMENT_MAX_AMOUNT: float = 10000.0
     PAYMENT_FAIL_RATE: float = 0.0
-
+    KAFKA_BOOTSTRAP: str = "localhost:29092"
     class Config:
         env_file = ".env"
         extra = "ignore"
