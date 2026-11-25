@@ -84,9 +84,8 @@ services:
       - DATABASE_URL=postgresql+psycopg2://app:shopstream_secret_123@postgres:5432/order_db
       - JWT_SECRET=super_secret_key_change_me_later
       - JWT_ALGORITHM=HS256
-      - PRODUCT_SERVICE_URL=http://host.docker.internal:8002
-      - PAYMENT_SERVICE_URL=http://host.docker.internal:8004
       - KAFKA_BOOTSTRAP=kafka:9092
+      - PRODUCT_SERVICE_URL=http://product:8000
     ports:
       - "8003:8000"
     depends_on:
@@ -94,6 +93,8 @@ services:
         condition: service_healthy
       kafka:
         condition: service_healthy
+      product:
+        condition: service_started
 
   product_worker:
     build: ./services/products
@@ -126,6 +127,20 @@ services:
   order_worker:
     build: ./services/orders
     command: python -m app.worker
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://app:shopstream_secret_123@postgres:5432/order_db
+      - JWT_SECRET=super_secret_key_change_me_later
+      - JWT_ALGORITHM=HS256
+      - KAFKA_BOOTSTRAP=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  outbox_relay:
+    build: ./services/orders
+    command: python -m app.outbox_relay
     environment:
       - DATABASE_URL=postgresql+psycopg2://app:shopstream_secret_123@postgres:5432/order_db
       - JWT_SECRET=super_secret_key_change_me_later

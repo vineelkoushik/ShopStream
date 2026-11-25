@@ -1,11 +1,10 @@
 from decimal import Decimal 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
-from app.models import Order, OrderItem
+from app.models import Order, OrderItem, OutboxEvent
 from app.schemas import OrderCreate
 from app.clients.product_client import get_product, ProductNotFoundError, ProductServiceUnavailableError
 from app.events.envelope import build_event
-from app.events.producer import publish
 
 def create_order(db: Session, user_id: int, order_in: OrderCreate, token: str) -> Order:
     total = Decimal("0.00")  
@@ -47,7 +46,14 @@ def create_order(db: Session, user_id: int, order_in: OrderCreate, token: str) -
         "user_id": user_id
     }
     event = build_event("order.created", new_order.id, event_data)
-    publish("order.created", new_order.id, event)
+    
+    outbox_event = OutboxEvent(
+        topic="order.created",
+        key=str(new_order.id),
+        payload=event
+    )
+    db.add(outbox_event)
+    db.commit()
 
     return new_order
 
