@@ -46,7 +46,10 @@ def handle_inventory_rejected(event: dict):
             cancelled_event = build_event(
                 "order.cancelled",
                 order_id,
-                {"reason": "out_of_stock"}
+                {
+                    "reason": "out_of_stock",
+                    "user_id": order.user_id
+                }
             )
 
             publish("order.cancelled", order_id, cancelled_event)
@@ -100,7 +103,10 @@ def handle_payment_completed(event: dict):
             confirmed_event = build_event(
                 "order.confirmed",
                 order_id,
-                {"status": "confirmed"}
+                {
+                    "status": "confirmed",
+                    "user_id": order.user_id
+                }
             )
 
             publish("order.confirmed", order_id, confirmed_event)
@@ -155,7 +161,10 @@ def handle_payment_failed(event: dict):
             cancelled_event = build_event(
                 "order.cancelled",
                 order_id,
-                {"reason": "payment_failed"}
+                {
+                    "reason": "payment_failed",
+                    "user_id": order.user_id
+                }
             )
 
             publish("order.cancelled", order_id, cancelled_event)
