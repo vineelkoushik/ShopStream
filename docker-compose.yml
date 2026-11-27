@@ -70,12 +70,15 @@ services:
       - JWT_SECRET=super_secret_key_change_me_later
       - JWT_ALGORITHM=HS256
       - KAFKA_BOOTSTRAP=kafka:9092
+      - REDIS_URL=redis://redis:6379/0
     ports:
       - "8002:8000"
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   order:
@@ -86,6 +89,7 @@ services:
       - JWT_ALGORITHM=HS256
       - KAFKA_BOOTSTRAP=kafka:9092
       - PRODUCT_SERVICE_URL=http://product:8000
+      - REDIS_URL=redis://redis:6379/0
     ports:
       - "8003:8000"
     depends_on:
@@ -95,6 +99,8 @@ services:
         condition: service_healthy
       product:
         condition: service_started
+      redis:
+        condition: service_healthy
 
   product_worker:
     build: ./services/products

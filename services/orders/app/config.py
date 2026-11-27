@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     PRODUCT_SERVICE_URL: str = "http://localhost:8002"
     PAYMENT_SERVICE_URL: str = "http://localhost:8004"
     KAFKA_BOOTSTRAP: str = "localhost:29092"
+    REDIS_URL: str = "redis://redis:6379/0"
 
     class Config:
         env_file = ".env"

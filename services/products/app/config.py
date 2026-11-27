@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     JWT_SECRET: str
     JWT_ALGORITHM: str = "HS256"
     KAFKA_BOOTSTRAP: str = "localhost:29092"
+    REDIS_URL: str = "redis://redis:6379/0"
     class Config:
         env_file = ".env"  
         extra = "ignore"
