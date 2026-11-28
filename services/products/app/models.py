@@ -1,11 +1,13 @@
-from sqlalchemy import String, Integer, Numeric, DateTime, ForeignKey, CheckConstraint
+
+from sqlalchemy import String, Integer, Numeric, DateTime, ForeignKey, CheckConstraint, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 from datetime import datetime, timezone
 from app.database import Base
 
+
 class Product(Base):
     __tablename__ = "products"
-    
+
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(255), index=True)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
@@ -22,18 +24,31 @@ class Product(Base):
         CheckConstraint("reserved <= stock", name="check_reserved_not_exceed_stock"),
     )
 
+
 class StockReservation(Base):
     __tablename__ = "stock_reservations"
-    
+
     id: Mapped[int] = mapped_column(primary_key=True)
     order_id: Mapped[int] = mapped_column(Integer, unique=True, index=True)
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id"))
     quantity: Mapped[int] = mapped_column(Integer)
-    status: Mapped[str] = mapped_column(String(20), default="reserved") 
+    status: Mapped[str] = mapped_column(String(20), default="reserved")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
 
 class ProcessedEvent(Base):
     __tablename__ = "processed_events"
-    
+
     event_id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)) 
+    processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class OutboxEvent(Base):
+    __tablename__ = "outbox_events"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    topic: Mapped[str] = mapped_column(String(100), nullable=False)
+    key: Mapped[str] = mapped_column(String(100), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

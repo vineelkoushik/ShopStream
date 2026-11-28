@@ -1,18 +1,18 @@
-
 from sqlalchemy.orm import Session
 from sqlalchemy import or_, update
 from fastapi import HTTPException
 
-from app.models import Product, StockReservation
+from app.models import Product, StockReservation, OutboxEvent
 from app.schemas import ProductCreate, ProductUpdate
 from app.events.envelope import build_event
-from app.events.producer import publish
 
 
 def get_product(db: Session, product_id: int) -> Product:
     product = db.query(Product).filter(Product.id == product_id).first()
+
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
+
     return product
 
 
@@ -45,32 +45,45 @@ def list_products(
 
 
 def create_product(db: Session, product_in: ProductCreate) -> Product:
-    new_product = Product(
-        name=product_in.name,
-        description=product_in.description,
-        price=product_in.price,
-        stock=product_in.stock,
-        reserved=0
-    )
+    try:
+        new_product = Product(
+            name=product_in.name,
+            description=product_in.description,
+            price=product_in.price,
+            stock=product_in.stock,
+            reserved=0
+        )
 
-    db.add(new_product)
-    db.commit()
-    db.refresh(new_product)
+        db.add(new_product)
+        db.flush()
 
-    event = build_event(
-        "product.created",
-        0,
-        {
-            "product_id": new_product.id,
-            "name": new_product.name,
-            "description": new_product.description,
-            "price": float(new_product.price)
-        }
-    )
+        event = build_event(
+            "product.created",
+            0,
+            {
+                "product_id": new_product.id,
+                "name": new_product.name,
+                "description": new_product.description,
+                "price": float(new_product.price)
+            }
+        )
 
-    publish("product.created", new_product.id, event)
+        db.add(
+            OutboxEvent(
+                topic="product.created",
+                key=str(new_product.id),
+                payload=event
+            )
+        )
 
-    return new_product
+        db.commit()
+        db.refresh(new_product)
+
+        return new_product
+
+    except Exception:
+        db.rollback()
+        raise
 
 
 def update_product(
@@ -78,47 +91,73 @@ def update_product(
     product_id: int,
     product_in: ProductUpdate
 ) -> Product:
-    product = get_product(db, product_id)
+    try:
+        product = get_product(db, product_id)
 
-    update_data = product_in.model_dump(exclude_unset=True)
+        update_data = product_in.model_dump(exclude_unset=True)
 
-    for key, value in update_data.items():
-        setattr(product, key, value)
+        for key, value in update_data.items():
+            setattr(product, key, value)
 
-    db.commit()
-    db.refresh(product)
+        db.flush()
 
-    event = build_event(
-        "product.updated",
-        0,
-        {
-            "product_id": product.id,
-            "name": product.name,
-            "description": product.description,
-            "price": float(product.price)
-        }
-    )
+        event = build_event(
+            "product.updated",
+            0,
+            {
+                "product_id": product.id,
+                "name": product.name,
+                "description": product.description,
+                "price": float(product.price)
+            }
+        )
 
-    publish("product.updated", product.id, event)
+        db.add(
+            OutboxEvent(
+                topic="product.updated",
+                key=str(product.id),
+                payload=event
+            )
+        )
 
-    return product
+        db.commit()
+        db.refresh(product)
+
+        return product
+
+    except Exception:
+        db.rollback()
+        raise
 
 
 def delete_product(db: Session, product_id: int):
-    product = get_product(db, product_id)
+    try:
+        product = get_product(db, product_id)
 
-    db.delete(product)
-    db.commit()
+        db.delete(product)
+        db.flush()
 
-    event = build_event(
-        "product.deleted",
-        0,
-        {
-            "product_id": product_id
-        }
-    )
+        event = build_event(
+            "product.deleted",
+            0,
+            {
+                "product_id": product_id
+            }
+        )
 
-    publish("product.deleted", product_id, event)
+        db.add(
+            OutboxEvent(
+                topic="product.deleted",
+                key=str(product_id),
+                payload=event
+            )
+        )
+
+        db.commit()
+
+    except Exception:
+        db.rollback()
+        raise
 
 
 def reserve_stock(db: Session, order_id: int, items: list[dict]) -> bool:
@@ -154,9 +193,9 @@ def reserve_stock(db: Session, order_id: int, items: list[dict]) -> bool:
         db.commit()
         return True
 
-    except Exception as e:
+    except Exception:
         db.rollback()
-        raise e
+        raise
 
 
 def release_stock(db: Session, order_id: int) -> bool:
@@ -168,17 +207,22 @@ def release_stock(db: Session, order_id: int) -> bool:
     if not reservations:
         return False
 
-    for res in reservations:
-        db.execute(
-            update(Product)
-            .where(Product.id == res.product_id)
-            .values(reserved=Product.reserved - res.quantity)
-        )
+    try:
+        for res in reservations:
+            db.execute(
+                update(Product)
+                .where(Product.id == res.product_id)
+                .values(reserved=Product.reserved - res.quantity)
+            )
 
-        res.status = "released"
+            res.status = "released"
 
-    db.commit()
-    return True
+        db.commit()
+        return True
+
+    except Exception:
+        db.rollback()
+        raise
 
 
 def commit_reservation(db: Session, order_id: int) -> bool:
@@ -190,17 +234,22 @@ def commit_reservation(db: Session, order_id: int) -> bool:
     if not reservations:
         return False
 
-    for res in reservations:
-        db.execute(
-            update(Product)
-            .where(Product.id == res.product_id)
-            .values(
-                stock=Product.stock - res.quantity,
-                reserved=Product.reserved - res.quantity
+    try:
+        for res in reservations:
+            db.execute(
+                update(Product)
+                .where(Product.id == res.product_id)
+                .values(
+                    stock=Product.stock - res.quantity,
+                    reserved=Product.reserved - res.quantity
+                )
             )
-        )
 
-        res.status = "committed"
+            res.status = "committed"
 
-    db.commit()
-    return True
+        db.commit()
+        return True
+
+    except Exception:
+        db.rollback()
+        raise

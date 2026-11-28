@@ -158,6 +158,20 @@ services:
       kafka:
         condition: service_healthy
 
+  product_outbox_relay:
+    build: ./services/products
+    command: python -m app.outbox_relay
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://app:shopstream_secret_123@postgres:5432/product_db
+      - JWT_SECRET=super_secret_key_change_me_later
+      - JWT_ALGORITHM=HS256
+      - KAFKA_BOOTSTRAP=kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
   notification:
     build: ./services/notifications
     ports:
