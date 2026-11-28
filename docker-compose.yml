@@ -203,13 +203,35 @@ services:
 
   ai_assistant:
     build: ./services/ai_assistant
+    env_file:
+      - ./services/ai_assistant/.env
     environment:
       - DATABASE_URL=postgresql+psycopg2://app:shopstream_secret_123@postgres:5432/ai_db
       - JWT_SECRET=super_secret_key_change_me_later
       - JWT_ALGORITHM=HS256
       - KAFKA_BOOTSTRAP=kafka:9092
+      - EMBEDDING_MODEL=all-MiniLM-L6-v2
+      - EMBEDDING_DIM=384
     ports:
       - "8006:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  ai_worker:
+    build: ./services/ai_assistant
+    command: python -m app.worker
+    env_file:
+      - ./services/ai_assistant/.env
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://app:shopstream_secret_123@postgres:5432/ai_db
+      - JWT_SECRET=super_secret_key_change_me_later
+      - JWT_ALGORITHM=HS256
+      - KAFKA_BOOTSTRAP=kafka:9092
+      - EMBEDDING_MODEL=all-MiniLM-L6-v2
+      - EMBEDDING_DIM=384
     depends_on:
       postgres:
         condition: service_healthy
