@@ -187,6 +187,21 @@ services:
       kafka:
         condition: service_healthy
 
+  ai_assistant:
+    build: ./services/ai_assistant
+    environment:
+      - DATABASE_URL=postgresql+psycopg2://app:shopstream_secret_123@postgres:5432/ai_db
+      - JWT_SECRET=super_secret_key_change_me_later
+      - JWT_ALGORITHM=HS256
+      - KAFKA_BOOTSTRAP=kafka:9092
+    ports:
+      - "8006:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
   gateway:
     image: nginx:stable
     volumes:
