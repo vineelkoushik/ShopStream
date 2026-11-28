@@ -1,20 +1,16 @@
+
 from fastapi import Depends, FastAPI, HTTPException, Query
 from sqlalchemy.orm import Session
-
 from app.database import get_db
 from app.models import ProductDoc
 from app.rag.search import search_products
 from app.rag.recommend import recommend_products
-
-
+from app.routers.assistant import router as assistant_router
 app = FastAPI(title="ShopStream AI Assistant")
-
-
+app.include_router(assistant_router)
 @app.get("/health")
 def health():
     return {"status": "ok"}
-
-
 @app.get("/products/search")
 def semantic_product_search(
     q: str = Query(..., min_length=2),
@@ -23,7 +19,6 @@ def semantic_product_search(
 ):
     try:
         results = search_products(db, q, limit)
-
         return {
             "query": q,
             "count": len(results),
