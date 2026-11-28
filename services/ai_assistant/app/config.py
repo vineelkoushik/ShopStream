@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     GROQ_API_KEY: str = ""
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
     EMBEDDING_DIM: int = 384
+    ORDER_SERVICE_URL: str = "http://localhost:8003"
 
     model_config = SettingsConfigDict(
         env_file=".env",
